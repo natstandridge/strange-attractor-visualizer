@@ -28,7 +28,7 @@ fn setup(
     mut trajectories: ResMut<Trajectories>
 ) {
 
-    // material for sphere
+    /* material for sphere */
     let material = materials.add(StandardMaterial {
         base_color: Color::INDIGO,
         // metallic: 5.0,
@@ -36,7 +36,7 @@ fn setup(
         ..default()
     });
 
-    // mesh for sphere
+    /* mesh for sphere */
     let mesh = meshes.add(
         shape::Icosphere {
             radius: 0.1,
@@ -46,7 +46,7 @@ fn setup(
         .unwrap(),
     );
     
-    // light
+    /* light */
     // commands.spawn(PointLightBundle {
     //     point_light: PointLight {
     //         intensity: 8000.0,
@@ -57,7 +57,7 @@ fn setup(
     //     ..default()
     // });
     
-    // camera
+    /* camera */
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
@@ -65,7 +65,7 @@ fn setup(
 
     let mut rng = rand::thread_rng();
 
-    // looping through to create starting points
+    /* looping through to create starting points */
     for _ in 0..5 {
 
         let pos: Vec3 = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
@@ -109,7 +109,7 @@ fn calculate_and_draw_trajectories(
     // point_marker: ResMut<PointMarker>
 ) {
 
-    // mesh for sphere
+    /* mesh for sphere */
     let mesh = meshes.add(
         shape::Icosphere {
             radius: 0.1,
@@ -119,7 +119,7 @@ fn calculate_and_draw_trajectories(
         .unwrap(),
     );
 
-    // material for sphere
+    /* material for sphere */
     let material = materials.add(StandardMaterial {
         base_color: Color::INDIGO,
         metallic: 5.0,
