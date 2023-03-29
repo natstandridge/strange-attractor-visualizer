@@ -66,7 +66,7 @@ fn setup(
     let mut rng = rand::thread_rng();
 
     // looping through to create starting points
-    for _ in 0..5 {
+    for _ in 0..20 {
 
         let pos: Vec3 = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
 
@@ -105,7 +105,7 @@ fn calculate_and_draw_trajectories(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut trajectories: ResMut<Trajectories>,
-    mut camera: Query<With<Camera3d>>
+    mut camera: Query<&mut Transform, With<Camera>>
     // point_marker: ResMut<PointMarker>
 ) {
 
@@ -169,6 +169,10 @@ fn calculate_and_draw_trajectories(
     comx /= num_points;
     comy /= num_points;
     comz /= num_points;
+
+    for mut transform in camera.iter_mut() {
+        *transform = Transform::from_xyz(-50.0, 50.0, 50.0).looking_at(Vec3::new(comx, comy, comz), Vec3::Y)
+    }
 
 }
 
