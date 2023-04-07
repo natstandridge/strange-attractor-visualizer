@@ -1,38 +1,29 @@
 use bevy::prelude::*;
+use std::time::Duration;
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use rand::Rng;
 
 #[derive(Resource)]
 struct Trajectories(Vec<Vec<Vec3>>); // for storing starting points and their trajectories
-/*  
-    Vec[
-        Vec[ // starting point 1
-            Vec3[0.0, 0.0, 0.0],
-            Vec3[0.0, 0.0, 0.0] // point added as the next point in the line based on starting point
-            ]
-        Vec[ // starting point 2
-            Vec3[0.0, 0.0, 0.0]
-            ]
-        Vec[ // starting point 3, etc...
-
-            ]
-        ]
-    */
 
 #[derive(Resource)]
-struct PointMarker(shape::Icosphere);
+struct EntityStorage(Vec<(Entity, Duration)>);
+#[derive(Resource)]
+struct StartingEntityStorage(Vec<(Entity, Duration)>);
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut trajectories: ResMut<Trajectories>
+    mut trajectories: ResMut<Trajectories>,
+    mut entities: ResMut<StartingEntityStorage>,
+    time: Res<Time>
 ) {
 
     /* material for sphere */
     let material = materials.add(StandardMaterial {
-        base_color: Color::INDIGO,
-        // metallic: 5.0,
-        // reflectance: 0.0,
+        base_color: Color::WHITE,
+        emissive: Color::WHITE,
         ..default()
     });
 
@@ -71,16 +62,46 @@ fn setup(
         let pos: Vec3 = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
 
         // spawn sphere from cloned mesh
-        commands.spawn(
+        let entity_id = commands.spawn(
             PbrBundle {
                 mesh: mesh.clone(),
                 material: material.clone(),
                 transform: Transform::from_xyz(pos.x, pos.y, pos.z),
                 ..default()
             }
-        );
+        ).id();
+
+        let now = time.elapsed();
+        entities.0.push((entity_id, now));
         trajectories.0.push(vec![Vec3::new(pos.x, pos.y, pos.z)]); // Vec3 added to trajectory within Vec[Vec[]]
 
+    }
+}
+
+fn despawn_older_entities(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut entities: ResMut<EntityStorage>,
+    mut start_entities: ResMut<StartingEntityStorage>
+) {
+    let despawn_duration = Duration::from_secs_f64(15.0);
+
+    while let Some((entity, creation_time)) = start_entities.0.first() {
+        if time.elapsed() - *creation_time >= despawn_duration {
+            commands.entity(*entity).despawn();
+            start_entities.0.remove(0);
+        } else {
+            break;
+        }
+    }
+
+    while let Some((entity, creation_time)) = entities.0.first() {
+        if time.elapsed() - *creation_time >= despawn_duration {
+            commands.entity(*entity).despawn();
+            entities.0.remove(0);
+        } else {
+            break;
+        }
     }
 }
 
@@ -103,10 +124,12 @@ fn get_next_point(input_point: &Vec3) -> Vec3 {
 fn calculate_and_draw_trajectories(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut entities: ResMut<EntityStorage>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut trajectories: ResMut<Trajectories>,
-    mut camera: Query<&mut Transform, With<Camera>>
-    // point_marker: ResMut<PointMarker>
+    mut camera: Query<&mut Transform, With<Camera>>,
+    time: Res<Time>
+
 ) {
 
     /* mesh for sphere */
@@ -121,13 +144,10 @@ fn calculate_and_draw_trajectories(
 
     /* material for sphere */
     let material = materials.add(StandardMaterial {
-        base_color: Color::INDIGO,
-        metallic: 5.0,
-        reflectance: 0.0,
+        base_color: Color::WHITE,
+        emissive: Color::WHITE,
         ..default()
     });
-
-    // println!("trajectories len: {:#?}", trajectories.0.len());
 
     /* calculate new point according to */
     let mut comx = 0.0;
@@ -150,15 +170,17 @@ fn calculate_and_draw_trajectories(
                 // println!("new_point: {:#?}", new_point);
 
                 /* spawn a sphere there */
-                commands.spawn(
+                let entity_id = commands.spawn(
                     PbrBundle {
                         mesh: mesh.clone(),
                         material: material.clone(),
                         transform: Transform::from_xyz(new_point.x, new_point.y, new_point.z),
                         ..default()
                     }
-                );
+                ).id();
 
+                let now = time.elapsed();
+                entities.0.push((entity_id, now));
                 trajectory.push(new_point);
             },
             None => {}
@@ -176,12 +198,18 @@ fn calculate_and_draw_trajectories(
 
 }
 
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .insert_resource(Trajectories(Vec::new()))
-        .insert_resource(PointMarker(shape::Icosphere { radius: 0.1, subdivisions: 5 }.try_into().unwrap()))
+        .insert_resource(EntityStorage(Vec::new())) // Insert EntityStorage resource here
+        .insert_resource(StartingEntityStorage(Vec::new())) // Insert StartingEntityStorage resource here
+        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0))) // Add this line to set the background color to black
         .add_startup_system(setup)
+        .add_system(despawn_older_entities)
         .add_system(calculate_and_draw_trajectories)
         .run();
 }
